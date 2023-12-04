@@ -1,0 +1,17 @@
+# # Python cache and virtual environments
+__pycache__
+*_env
+
+# Drafts / TODOs
+*draft*
+TODO
+
+# Private backups / secrets / metadata / log files
+*.env
+instance_info.csv
+*.log
+/backups
+
+# VSCode config
+*.vscode
+
