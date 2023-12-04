@@ -1,11 +1,11 @@
-# Docker Container Filesystem Backups
+# docktainer-backup: Docker Container Filesystem Backups
 Daily backups of specific files/directories within Docker containers, with Telegram-supported notifications
 
 
 ## Overview
-```And you say this -- no one else will ever have to live like this. No one else will ever have to feel this pain.```
+```*record scratch* *freeze frame* ⁣ Yep, that's me. You're probably wondering how I ended up in this situation...```
 
-My nightmare began when my Jupyter container that I use for Python development, had filled up my entire 1TB disk drive (WSL only recently enabled automatic shrinking of VHDs), causing the container to crash.
+My nightmare began when my Python Jupyter dev container had filled up my entire 1TB disk drive (WSL only recently enabled automatic shrinking of VHDs), causing the container to crash.
 
 The Docker service wouldn't start due to lack of space, so I couldn't copy my files out. I couldn't make space or delete other files, since I had already transferred Docker to live in a separate drive its own. I found the virtual hard disk drive corresponding to docker-desktop-data, but had no idea how to open it to access its contents. I want to make a backup of it, but where am I going to find 1TB of free space at a moment's notice? As a last resort, I tried compressing the VHD via diskpart, and I managed to successfully compress it by 0B. Thank you Windows.
 
@@ -53,9 +53,9 @@ Hence, after losing about 2 weeks' worth of hard work, I decided to make a scrip
 ## Setup
 
 1. Clone repository
-   > \> git clone 
+   > \> git clone https://github.com/lihaan/docktainer-backup.git
 
-   > \> cd 
+   > \> cd docktainer-backup
 2. Install dependencies
    - Recommended to create a virtual environment (eg. venv) before installing
        > \> pip install -r requirements.txt
@@ -70,7 +70,12 @@ Hence, after losing about 2 weeks' worth of hard work, I decided to make a scrip
 ## Schedule
 
 ### Via Windows Task Scheduler
-(to be updated!)
+1. Create a .cmd file
+2. Insert the following text into it, replacing the content in \<arrow brackets\> with your own paths
+```
+<PATH\TO\YOUR|VENV>\Scripts\pythonw.exe <PATH\TO\>\docktainer-backup\container_backup.py
+```
+3. Create a task with Task Scheduler with the .cmd file as the action, making sure it does not trigger more than once per day
 
 ### Via crontab
 (Sorry I don't daily drive Linux)
@@ -143,6 +148,6 @@ container_paths:
 
 ## Contributing
 
-*DCBackups* is born from literal sweat and tears. Do consider [buying this struggling university student a coffee](https://www.buymeacoffee.com/lihanong)! Thank you!
+*docktainer-backup* is born from literal sweat and tears (mostly tears). Do consider [buying this struggling university student a coffee](https://www.buymeacoffee.com/lihanong)! Thank you!
 
 ~ Li Han
