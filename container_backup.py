@@ -40,16 +40,16 @@ if os.path.exists(backup_config_path):
         with open(backup_config_path, "r") as file:
             custom_backup_config = yaml.safe_load(file)
 
-        print(custom_backup_config)
-        for param, value in custom_backup_config.items():
-            if value is None:
-                custom_backup_config[param] = default_backup_config[param]
+        if custom_backup_config is not None:
+            for param, value in custom_backup_config.items():
+                if value is None:
+                    custom_backup_config[param] = default_backup_config[param]
 
-        if custom_backup_config:
-            backup_config = {**default_backup_config, **custom_backup_config}
+            if custom_backup_config:
+                backup_config = {**default_backup_config, **custom_backup_config}
 
-        if backup_config["backup_keep_num"] == 0:
-            raise ValueError("backup_keep_num cannot be 0!")
+            if backup_config["backup_keep_num"] == 0:
+                raise ValueError("backup_keep_num cannot be 0!")
     except:
         print(f"Error reading from {backup_config_path}!")
         raise
