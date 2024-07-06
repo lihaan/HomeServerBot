@@ -15,13 +15,13 @@ Hence, after losing about 2 weeks' worth of hard work, I decided to make a scrip
 ## Features
 
 #### Targeted file/directory backups
-  - Paths to files/directories can be specified for each container ID, so that unnecessary contents do not take up precious disk space
+  - Paths to files/directories can be specified for each container ID, so that unnecessary contents do not take up disk space
 #### Backup only when needed
-  - By default, backups of specified paths are only made if the associated container has run at least once since it was last backed up (or is currently running)
+  - Backups of specified paths are only made if the associated container had actually ran since its last backup
   - The minimum number of days between backups can also be configured
-#### Automatic Pruning
-  - Backups (for specified paths) of deleted containers can be deleted when a threshold duration is reached
-  - Outdated backups (for a specific path on a specific container) can be removed when the number reaches a user-configurable value
+#### Automated Pruning
+  - Backups of specified paths of deleted containers can be deleted when a user-configurable threshold duration is reached
+  - Older backups can be deleted so that the total number of backups does not rise past a user-configurable value
 #### Notifications via Telegram
   - I love Telegram so much that I incorporated disk usage and backup status updates to be delivered via a Telegram bot
   - Just specify your Telegram chat ID and your own Telegram bot token
@@ -56,94 +56,97 @@ Hence, after losing about 2 weeks' worth of hard work, I decided to make a scrip
    > \> git clone https://github.com/lihaan/docktainer-backup.git
 
    > \> cd docktainer-backup
+   
 2. Install dependencies
    - Recommended to create a virtual environment (eg. venv) before installing
-       > \> pip install -r requirements.txt
+      > \> pip install -r requirements.txt
 
 3. (Optional) Obtain Telegram chat ID and bot token
    - [External link to instructions](https://www.alphr.com/find-chat-id-telegram/)
-   - The method described in the link basically involves starting a conversation with the @RawDataBot on Telegram, which will return some information about your account ie. your chat ID. If you are concerned about privacy, do not that in doing so, you are technically giving the owner of that bot your chat ID
-4. Configure backup_config.yaml
+   - The method described in the link basically involves starting a conversation with the @RawDataBot on Telegram, which will return some (non-sensitive) information about your account ie. your chat ID.
+  
+4. Configure *config.yaml*
    - Parameters and their default options are listed in it, as well as at [Configuration Options](#configuration-options)
+
+5. [Schedule](#configuration-options) the script!
 
 
 ## Schedule
 
 ### Via Windows Task Scheduler
-1. Create a .cmd file
+1. Create a .cmd file (eg. script.cmd)
 2. Insert the following text into it, replacing the content in \<arrow brackets\> with your own paths
-```
-<PATH\TO\YOUR|VENV>\Scripts\pythonw.exe <PATH\TO\>\docktainer-backup\container_backup.py
-```
-3. Create a task with Task Scheduler with the .cmd file as the action, making sure it does not trigger more than once per day
+    > <PATH_TO_YOUR_PYTHON_DIR>\pythonw.exe <PATH_TO_REPOSITORY_DIR>\docktainer-backup\container_backup.py
+
+3. Create a task with Task Scheduler with script.cmd file as the action, that triggers once everyday
+    - you may in fact run the script as often as you like based on your use case
+    - see the configuration options for ways to 
 
 ### Via crontab
 (Sorry I don't daily drive Linux)
 
 
 ## Configuration Options
+#### Note:
 - An "instance" refers to a specified path on a specific container
-- Default value for the option will be used if a blank (None) value is provided, or if the option is left out altogether
+- Default value for the option will be used if the option is left out altogether
 
 ### Backup settings
-#### min_backup_interval: 0
+#### min_backup_interval: 0 (int)
 - Minimum no. of days between each instance's backups
-- "Minimum": An instance will only be backed up after *min_backup_interval* full days has passed, if its container ran during that interval / is currently running
-- All of a container's associated instances will be backed up together to ensure data synchronization
-- Backups are independently conducted for each container ie. a new container being backed up will not cause other existing containers to be backed up
+- "Minimum": An instance will only be backed up after *min_backup_interval* full days has passed since its last backup, and if the corresponding container ran during that interval / is currently running
+- Default value of 0 means that every time the script is run, if the container is currently running, a new backup will be made
 
-#### ghost_backup_keep_days: -1
-- Max number of days (inclusive) to keep backups of an instance after its container has been deleted
+#### ghost_backup_keep_days: -1 (int)
+- Max number of days to keep backups of an instance after its container has been deleted
 - Default value of -1 means such backups are never pruned
 
-#### backup_keep_num: -1
-- Max number of backups of an instance to keep (whose container is still not deleted)
-- Pruning of extra backups occurs before new ones are created
-- Default value of -1 means extra backups are never pruned
+#### backup_keep_num: -1 (int)
+- Max number of backups of an instance to keep
+- Must be a non-zero positive number, or -1 (default value)
+- Pruning of oldest backups occurs before new ones are created (but if pruning fails, the backup will still be made)
+- Default value of -1 means old backups are never pruned
 
-#### warn_large_backup_mb: 1024
+#### warn_large_backup_mb: 1024 (int)
 - Warn if difference between newly created backup and pruned size is more than specified amount in mebibytes (MiB)
 
-#### backup_by_default: True
-- If True, backup all containers by default, else if True, only those specified in *container_paths*
+#### backup_by_default: True (bool)
+- If True, backup all containers by default, else if False, only those specified in *container_paths*
 
-#### container_paths: *(empty)*
-- Dictionary of containers (identified by short_id - first 12 characters), each with a list of paths to backup (see example provided)
-- If *backup_by_default*=True and a container ID is not listed in container_paths, the entire container's filesystem will be backed up
-- If the list of paths for a container ID is empty, the script will fall back to the backup_by_default when deciding whether the container should be backed up
-- Backups for all specified paths for a container will occur, as long as one of them meets the backup condition / have not been backed up before
-- Removing a specified path will mark that instance as deleted
-- Example:
+#### container_paths: *blank* (dict - {str/numeric: str})
+- Dictionary of container IDs (provide at least the first 12 characters), each with a list of paths to backup (see example provided)
+- If *backup_by_default*=True, containers not listed in *container_paths* will have their entire filesystem backed up
+- As the script does not keep track of changes over time, backups for all specified paths for a container will occur as long as either:
+  1. the container has not been backed up before
+  2. at least *min_backup_interval* days has passed since the last backup, AND the container had run at least once since then
+- Removing a specified path will mark that corresponding instance as deleted
+  - Conversely, an instance that has been marked as deleted can be restored if its container and path is added back to *container_paths* (and if its ghost backups have not been completely pruned)
+- Example configuration:
 ```
 container_paths:
   fd312f3n7h45:
   - /etc
   - /home/main.py
   container_id_2:
-  - /path/to/file
+  - /path/to/file.ext
   - /path/to/dir
   ```
 
 
 ### Notification settings
 
-#### telegram_chat_id: *(empty)*
+#### telegram_chat_id: *blank*
 - Chat ID of your telegram account to send notifications to (must be used together with *telegram_bot_token*)
 
-#### telegram_bot_token: *(empty)*
+#### telegram_bot_token: *blank*
 - Bot Token of your telegram bot to send notifications from (must be used together with *telegram_chat_id*)
 
 
 ### Paths to directories containing output file (Ensure these are created already)
 
-#### instance_info_dir_path: *(empty)*
-- Directory containing *instance_info.csv*, a persistent file that stores metadata about each instance and its backups
-
-#### backup_dir_path: *(empty)*
-- Directory containing backups
-
-#### log_dir_path: *(empty)*
-- Directory containing log files of backups
+#### archive_dir_path: *current_directory* (str)
+- Directory containing backup folder, log folder, and instance_info.csv (a persistent file that stores metadata about each instance and its backups)
+- If specified value cannot be located, the script defaults to using this current folder as the archive destination
 
 
 ## Contributing

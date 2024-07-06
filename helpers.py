@@ -1,10 +1,8 @@
 import datetime as dt
 import math
 import shutil
-import logging
-from collections import defaultdict
 import os
-import pandas as pd
+import re
 
 
 def format_messages(message_list):
@@ -16,9 +14,15 @@ def format_messages(message_list):
 
 
 def format_instance_name(container_id, container_name, path_backed):
-    path_backed_formatted = path_backed.replace("/", "%").replace("\\", "%")
+    # forbidden characters retrieved from https://stackoverflow.com/questions/1976007/what-characters-are-forbidden-in-windows-and-linux-directory-names
+    # hyphens converted to % as well so as to not interfere with naming scheme
 
-    return f"{container_id}-{container_name}-{path_backed_formatted}"
+    path_backed_formatted = re.sub(r"[\\/:*?\"<>|]", "%", path_backed).replace("-", "%")
+    container_name_formatted = re.sub(r"[\\/:*?\"<>|]", "%", container_name).replace(
+        "-", "%"
+    )
+
+    return f"{container_id}-{container_name_formatted}-{path_backed_formatted}"
 
 
 date_format_string = "%y%m%d"
@@ -40,9 +44,17 @@ def construct_backup_name(instance_name, date):
     return backup_name
 
 
+def parse_datetime(date_string):
+    # Use regex to truncate the string to second precision
+    truncated_string = re.sub(r"(\.\d+)?Z$", "Z", date_string)
+
+    # Parse the truncated string
+    return dt.datetime.strptime(truncated_string, "%Y-%m-%dT%H:%M:%SZ")
+
+
 def parse_filename(
     filename_w_extension,
-):  # TODO: might have to consider removing extension
+):
     backup_name, extension = os.path.splitext(filename_w_extension)
     (
         container_id,
@@ -94,17 +106,3 @@ def check_available_space(path):
     free_str = convert_bytes_to_readable(free)
 
     return free_percent, free_str
-
-
-class LogLevelHandler(logging.Handler):
-    # Idea from https://stackoverflow.com/a/31142078
-    level_messages = None
-
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.level_messages = defaultdict(list)
-
-    def emit(self, record):
-        self.format(record)
-        l = record.levelname
-        self.level_messages[l].append(record.message)

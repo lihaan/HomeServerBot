@@ -1,0 +1,21 @@
+---
+### Sample configuration file (see README.md for documentation)
+
+## Backup settings
+# min_backup_interval: 1
+# ghost_backup_keep_days: 3
+# backup_keep_num: 7
+# warn_large_backup_mb: 1024
+# backup_by_default: True
+# container_paths:
+#   dfv968f7gf71:
+#   - "/" # root path
+#   dfv968f7gf71:
+#   - "/" # root path
+
+## Notification settings
+# telegram_chat_id: YOUR_CHAT_ID
+# telegram_bot_token: YOUR_BOT_TOKEN
+
+## Paths to output file directories
+# archive_dir_path: C:\Path\to\current\directory
