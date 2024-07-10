@@ -12,7 +12,6 @@ import workflows
 
 # Constants
 curr_path = os.path.dirname(__file__)
-dt_current = dt.datetime.now().replace(microsecond=0)
 
 # Default backup settings
 default_config = {
@@ -62,8 +61,7 @@ async def main(df, bot):
                 df.copy(),
                 docker_client,
                 config["container_paths"],
-                config["backup_by_default"],
-                dt_current,
+                config["backup_by_default"]
             )
         except:
             logger.error(
@@ -75,7 +73,7 @@ async def main(df, bot):
     # Prune backups of instances that are marked as deleted
     try:
         df, prune_size = workflows.prune_ghost_backups(
-            df.copy(), backup_dir_path, config["ghost_backup_keep_days"], dt_current
+            df.copy(), backup_dir_path, config["ghost_backup_keep_days"]
         )
         total_prune_size += prune_size
     except:
@@ -93,8 +91,7 @@ async def main(df, bot):
                     backup_dir_path,
                     config["min_backup_interval"],
                     config["backup_keep_num"],
-                    config["warn_large_backup_mb"],
-                    dt_current,
+                    config["warn_large_backup_mb"]
                 )
             )
             total_prune_size += prune_size
@@ -154,7 +151,7 @@ async def main_bot_wrapped(df, bot):
 
 if __name__ == "__main__":
     config, instance_info_path, df, backup_dir_path = loader.load_and_parse_args(
-        default_config, curr_path, dt_current
+        default_config, curr_path
     )
 
     logger, logLevelCountHandler = custom_logging.get_logger(__name__)

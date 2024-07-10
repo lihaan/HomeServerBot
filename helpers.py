@@ -5,6 +5,10 @@ import os
 import re
 
 
+def get_current_datetime():
+    return dt.datetime.now().replace(microsecond=0)
+
+
 def format_messages(message_list):
     final_str = []
     for i, msg in enumerate(message_list):
@@ -44,7 +48,7 @@ def construct_backup_name(instance_name, date):
     return backup_name
 
 
-def parse_datetime(date_string):
+def parse_to_datetime(date_string):
     # Use regex to truncate the string to second precision
     truncated_string = re.sub(r"(\.\d+)?Z$", "Z", date_string)
 

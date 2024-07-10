@@ -33,15 +33,15 @@ def get_container_dt_last_alive(container_id, dt_current, client):
     # We consider a container's last alive time to be the current time if it is still running,
     # or the time it finished if it has stopped
     inspection = client.inspect_container(container_id)
-    dt_started_at = helpers.parse_datetime(inspection["State"]["StartedAt"])
-    dt_finished_at = helpers.parse_datetime(inspection["State"]["FinishedAt"])
+    dt_started_at = helpers.parse_to_datetime(inspection["State"]["StartedAt"])
+    dt_finished_at = helpers.parse_to_datetime(inspection["State"]["FinishedAt"])
 
     if dt_started_at >= dt_finished_at:
         return dt_current
     return dt_finished_at
 
 
-def update_instances(df, docker_client, container_paths, backup_by_default, dt_current):
+def update_instances(df, docker_client, container_paths, backup_by_default):
     instances_to_backup = {}
     new_rows = []
     # Get names of instances from dataframe
@@ -103,7 +103,7 @@ def update_instances(df, docker_client, container_paths, backup_by_default, dt_c
         update_dt_deleted,
         axis=1,
         instances_to_backup=instances_to_backup,
-        dt_current=dt_current,
+        dt_current=helpers.get_current_datetime(),
     )
     final_len = df["dt_deleted"].notna().sum()
     if initial_len == final_len:
@@ -115,7 +115,7 @@ def update_instances(df, docker_client, container_paths, backup_by_default, dt_c
     # Update container_dt_last_alive column for all containers
     containers_dt_last_alive = {
         helpers.short(container["Id"]): get_container_dt_last_alive(
-            container["Id"], dt_current, docker_client
+            container["Id"], helpers.get_current_datetime(), docker_client
         )
         for container in container_list
     }
@@ -126,7 +126,7 @@ def update_instances(df, docker_client, container_paths, backup_by_default, dt_c
     return df
 
 
-def prune_ghost_backups(df, backup_dir_path, ghost_backup_keep_days, dt_current):
+def prune_ghost_backups(df, backup_dir_path, ghost_backup_keep_days):
     total_prune_size = 0
 
     backup_filenames = os.listdir(backup_dir_path)
@@ -134,7 +134,8 @@ def prune_ghost_backups(df, backup_dir_path, ghost_backup_keep_days, dt_current)
     # Get instances where it has been at least more than ghost_backup_keep_days days since it was marked as deleted
     deleted_df = df[(df["dt_deleted"].notna())]
     instances_to_prune = deleted_df[
-        (dt_current - deleted_df["dt_deleted"]).dt.days >= ghost_backup_keep_days
+        (helpers.get_current_datetime() - deleted_df["dt_deleted"]).dt.days
+        >= ghost_backup_keep_days
     ]
     logger.info(f"Backups of {len(instances_to_prune)} ghost instances to be pruned.")
 
@@ -194,8 +195,7 @@ def prune_extra_and_create_backups(
     backup_dir_path,
     min_backup_interval,
     backup_keep_num,
-    warn_large_backup_mb,
-    dt_current,
+    warn_large_backup_mb
 ):
     total_prune_size = 0
     total_backup_size = 0
@@ -215,7 +215,10 @@ def prune_extra_and_create_backups(
             df["dt_last_backed"].isna()
             | (
                 (df["container_dt_last_alive"] > df["dt_last_backed"])
-                & ((dt_current - df["dt_last_backed"]).dt.days >= min_backup_interval)
+                & (
+                    (helpers.get_current_datetime() - df["dt_last_backed"]).dt.days
+                    >= min_backup_interval
+                )
             )
         )
     ]
@@ -235,6 +238,7 @@ def prune_extra_and_create_backups(
             short_id, container_name, container_path
         )
         instance_prune_size = 0
+        instance_prune_count = 0
 
         backups = [
             (filename, backup_date)
@@ -253,7 +257,6 @@ def prune_extra_and_create_backups(
 
             # Prune oldest first, until number of backups is one less than backup_keep_num
             backups.sort(key=lambda x: x[1])
-            instance_prune_count = 0
             for i in range(len(backups) - backup_keep_num + 1):
                 filename = backups[i][0]
                 logger.info(f"Pruning backup: {filename}...")
@@ -268,7 +271,8 @@ def prune_extra_and_create_backups(
                     logger.warning(traceback.format_exc())
 
         # Create backup of instance
-        backup_name = helpers.construct_backup_name(instance_name, dt_current)
+        dt_backed = helpers.get_current_datetime()
+        backup_name = helpers.construct_backup_name(instance_name, dt_backed)
         logger.info(f"Creating backup: {backup_name}...")
         try:
             bits, _ = client.get_archive(short_id, container_path, encode_stream=True)
@@ -299,7 +303,7 @@ def prune_extra_and_create_backups(
                 len(label_to_update) == 1
             ), "Multiple rows with the same instance name found!"
             label_to_update = label_to_update[0]
-            df.loc[label_to_update, "dt_last_backed"] = dt_current
+            df.loc[label_to_update, "dt_last_backed"] = dt_backed
             df.loc[label_to_update, "size_last_backed"] = filesize
 
             # Check if size difference between pruned and created is more than warn_large_backup_mb

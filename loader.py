@@ -11,7 +11,7 @@ LOGS_DIR_FILENAME = "logs"
 INSTANCE_INFO_FILENAME = "instance_info.csv"
 
 
-def load_and_parse_args(default_config, curr_path, dt_current):
+def load_and_parse_args(default_config, curr_path):
     config = default_config.copy()
 
     config_path = os.path.abspath(f"{curr_path}/{CONFIG_FILENAME}")
@@ -123,7 +123,7 @@ def load_and_parse_args(default_config, curr_path, dt_current):
     logfile_path = helpers.uniquify(
         os.path.join(
             log_dir_path,
-            f"container_backup_log_{dt_current.strftime(helpers.date_format_string)}.log",
+            f"container_backup_log_{helpers.get_current_datetime().strftime(helpers.date_format_string)}.log",
         )
     )
     # Configure logging parameters
